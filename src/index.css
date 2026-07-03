@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  color: #1c1c1c;
+  background-color: #FBF8F1;
+}
+
+h1, h2, h3, .font-display {
+  font-family: 'Playfair Display', serif;
+}
+
+.container-x {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+.btn-primary {
+  @apply bg-brand-dark text-white px-6 py-3 rounded-md font-medium hover:bg-brand transition-colors;
+}
+
+.btn-outline {
+  @apply border border-brand-dark text-brand-dark px-6 py-3 rounded-md font-medium hover:bg-brand-dark hover:text-white transition-colors;
+}
+
+.tag {
+  @apply text-[11px] font-semibold px-2.5 py-1 rounded-md text-white;
+}
+
+.input {
+  @apply w-full border border-gray-200 rounded-md px-3 py-2 text-sm outline-none focus:border-brand-dark bg-white;
+}
