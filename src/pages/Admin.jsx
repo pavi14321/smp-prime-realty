@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import {
   PlusCircle, Trash2, Star, LayoutList, CheckCircle2, ClipboardList, Users, History,
-  LogOut, ShieldAlert,
+  LogOut, ShieldAlert, Newspaper, CalendarClock, Send,
 } from 'lucide-react';
 import { getAllProperties, addProperty, deleteProperty, updateProperty, subscribeDB, CATEGORIES } from '../data/db';
 import { getSubmissions, updateSubmissionStatus, subscribeSubmissions } from '../data/submissionsStore';
 import { getAdmins, addAdmin, removeAdmin, getActivityLog, subscribeAdmins } from '../data/adminStore';
+import {
+  getAllBlogPostsAdmin, addBlogPost, updateBlogPost, deleteBlogPost, getEffectiveStatus, subscribeBlog,
+} from '../data/blogStore';
 import { useAdminAuth } from '../context/AdminAuthContext';
 import ImageUploader from '../components/ImageUploader';
 import toast from 'react-hot-toast';
@@ -23,6 +26,15 @@ const emptyForm = {
   sharingOptions: [{ id: 1, sharingType: '2 Sharing', rooms: '', rent: '' }],
 };
 
+const emptyBlogForm = {
+  title: '',
+  description: '',
+  image: [],
+  publishMode: 'now', // 'now' | 'schedule'
+  scheduleDate: '',
+  scheduleTime: '',
+};
+
 export default function Admin() {
   const { currentAdmin, logout } = useAdminAuth();
   const isSuperAdmin = currentAdmin?.role === 'superadmin';
@@ -32,13 +44,17 @@ export default function Admin() {
   const [submissions, setSubmissions] = useState([]);
   const [admins, setAdmins] = useState([]);
   const [activityLog, setActivityLog] = useState([]);
+  const [blogPosts, setBlogPosts] = useState([]);
   const [form, setForm] = useState(emptyForm);
+  const [blogForm, setBlogForm] = useState(emptyBlogForm);
   const [lastAdded, setLastAdded] = useState(null);
   const [convertingId, setConvertingId] = useState(null);
+  const [editingBlogId, setEditingBlogId] = useState(null);
   const [adminForm, setAdminForm] = useState({ name: '', email: '', phone: '', password: '', role: 'admin' });
 
   useEffect(() => { const l = () => setProperties(getAllProperties()); l(); return subscribeDB(l); }, []);
   useEffect(() => { const l = () => setSubmissions(getSubmissions()); l(); return subscribeSubmissions(l); }, []);
+  useEffect(() => { const l = () => setBlogPosts(getAllBlogPostsAdmin()); l(); return subscribeBlog(l); }, []);
   useEffect(() => {
     const l = () => { setAdmins(getAdmins()); setActivityLog(getActivityLog()); };
     l();
@@ -48,6 +64,11 @@ export default function Admin() {
   const set = (key) => (e) => {
     const val = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     setForm((f) => ({ ...f, [key]: val }));
+  };
+
+  const setBlog = (key) => (e) => {
+    const val = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+    setBlogForm((f) => ({ ...f, [key]: val }));
   };
 
   const isPG = form.status === 'PG';
@@ -155,14 +176,102 @@ export default function Admin() {
     }
   };
 
+  const handleBlogSubmit = (e) => {
+    e.preventDefault();
+    if (!blogForm.title.trim()) {
+      toast.error('Please enter a title');
+      return;
+    }
+    if (!blogForm.description.trim()) {
+      toast.error('Please enter a description');
+      return;
+    }
+    if (blogForm.image.length === 0) {
+      toast.error('Please upload a cover image');
+      return;
+    }
+
+    let publishAt = Date.now();
+    let status = 'Published';
+
+    if (blogForm.publishMode === 'schedule') {
+      if (!blogForm.scheduleDate || !blogForm.scheduleTime) {
+        toast.error('Please pick a schedule date and time');
+        return;
+      }
+      const scheduled = new Date(`${blogForm.scheduleDate}T${blogForm.scheduleTime}`).getTime();
+      if (Number.isNaN(scheduled)) {
+        toast.error('Invalid schedule date/time');
+        return;
+      }
+      if (scheduled <= Date.now()) {
+        toast.error('Scheduled time must be in the future');
+        return;
+      }
+      publishAt = scheduled;
+      status = 'Scheduled';
+    }
+
+    if (editingBlogId) {
+      updateBlogPost(editingBlogId, {
+        title: blogForm.title,
+        description: blogForm.description,
+        image: blogForm.image[0],
+        publishAt,
+        status,
+      });
+      toast.success('Blog post updated');
+      setEditingBlogId(null);
+    } else {
+      addBlogPost({
+        title: blogForm.title,
+        description: blogForm.description,
+        image: blogForm.image[0],
+        author: currentAdmin?.name || 'Admin',
+        publishAt,
+        status,
+      });
+      toast.success(status === 'Scheduled' ? 'Blog post scheduled' : 'Blog post published');
+    }
+
+    setBlogForm(emptyBlogForm);
+    setTab('blogList');
+  };
+
+  const handleEditBlogPost = (p) => {
+    const d = new Date(p.publishAt);
+    const pad = (n) => String(n).padStart(2, '0');
+    setBlogForm({
+      title: p.title,
+      description: p.description,
+      image: [p.image],
+      publishMode: p.status === 'Scheduled' && getEffectiveStatus(p) === 'Scheduled' ? 'schedule' : 'now',
+      scheduleDate: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+      scheduleTime: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+    });
+    setEditingBlogId(p.id);
+    setTab('blogAdd');
+  };
+
+  const handlePublishNow = (id) => {
+    updateBlogPost(id, { status: 'Published', publishAt: Date.now() });
+    toast.success('Post published now');
+  };
+
+  const handleDeleteBlogPost = (id) => {
+    deleteBlogPost(id);
+    toast.success('Post deleted');
+  };
+
   const pendingCount = submissions.filter((s) => s.status === 'Pending').length;
+  const scheduledBlogCount = blogPosts.filter((p) => getEffectiveStatus(p) === 'Scheduled').length;
 
   return (
     <div className="container-x py-10">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div>
           <h1 className="font-display text-3xl font-bold text-brand-dark">Admin Panel</h1>
-          <p className="text-sm text-gray-500">Add and manage property & PG listings shown on the website.</p>
+          <p className="text-sm text-gray-500">Add and manage property, PG and blog content shown on the website.</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="text-right">
@@ -179,6 +288,13 @@ export default function Admin() {
         <TabButton active={tab === 'add'} onClick={() => setTab('add')} icon={<PlusCircle size={15} />} label="Add Property / PG" />
         <TabButton active={tab === 'list'} onClick={() => setTab('list')} icon={<LayoutList size={15} />} label={`Manage (${properties.length})`} />
         <TabButton active={tab === 'submissions'} onClick={() => setTab('submissions')} icon={<ClipboardList size={15} />} label={`Requests (${pendingCount})`} />
+        <TabButton
+          active={tab === 'blogAdd'}
+          onClick={() => { setEditingBlogId(null); setBlogForm(emptyBlogForm); setTab('blogAdd'); }}
+          icon={<Newspaper size={15} />}
+          label="Write Blog Post"
+        />
+        <TabButton active={tab === 'blogList'} onClick={() => setTab('blogList')} icon={<LayoutList size={15} />} label={`Manage Posts (${blogPosts.length})`} />
         {isSuperAdmin && (
           <>
             <TabButton active={tab === 'admins'} onClick={() => setTab('admins')} icon={<Users size={15} />} label="Manage Admins" />
@@ -396,6 +512,133 @@ export default function Admin() {
             </tbody>
           </table>
           {submissions.length === 0 && <p className="text-center text-gray-400 py-10 text-sm">No requests yet.</p>}
+        </div>
+      )}
+
+      {tab === 'blogAdd' && (
+        <form onSubmit={handleBlogSubmit} className="bg-white border border-gray-100 rounded-xl p-6 grid md:grid-cols-2 gap-5">
+          {editingBlogId && (
+            <div className="md:col-span-2 flex items-center gap-2 bg-brand-50 text-brand-dark text-sm rounded-lg px-4 py-3">
+              <ShieldAlert size={16} /> Editing post <strong>{editingBlogId}</strong>.
+            </div>
+          )}
+
+          <Field label="Title" required full>
+            <input required value={blogForm.title} onChange={setBlog('title')} className="input" placeholder="e.g. 5 Tips Before Buying Your First Home" />
+          </Field>
+
+          <Field label="Description" required full>
+            <textarea
+              required
+              value={blogForm.description}
+              onChange={setBlog('description')}
+              rows={8}
+              className="input"
+              placeholder="Write your blog post content here..."
+            />
+          </Field>
+
+          <Field label="Cover Image" required full>
+            <ImageUploader images={blogForm.image} onChange={(imgs) => setBlogForm((f) => ({ ...f, image: imgs }))} max={1} label="Cover Image" />
+          </Field>
+
+          <Field label="Publish Option" required full>
+            <div className="flex items-center gap-6 mb-3">
+              <label className="flex items-center gap-2 text-sm text-gray-600">
+                <input
+                  type="radio"
+                  name="publishMode"
+                  checked={blogForm.publishMode === 'now'}
+                  onChange={() => setBlogForm((f) => ({ ...f, publishMode: 'now' }))}
+                />
+                <Send size={14} /> Post Now
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-600">
+                <input
+                  type="radio"
+                  name="publishMode"
+                  checked={blogForm.publishMode === 'schedule'}
+                  onChange={() => setBlogForm((f) => ({ ...f, publishMode: 'schedule' }))}
+                />
+                <CalendarClock size={14} /> Schedule for Later
+              </label>
+            </div>
+
+            {blogForm.publishMode === 'schedule' && (
+              <div className="grid grid-cols-2 gap-3 max-w-md">
+                <input
+                  type="date"
+                  value={blogForm.scheduleDate}
+                  onChange={setBlog('scheduleDate')}
+                  className="input"
+                />
+                <input
+                  type="time"
+                  value={blogForm.scheduleTime}
+                  onChange={setBlog('scheduleTime')}
+                  className="input"
+                />
+              </div>
+            )}
+          </Field>
+
+          <div className="md:col-span-2">
+            <button type="submit" className="btn-primary">
+              {blogForm.publishMode === 'schedule' ? 'Schedule Post' : editingBlogId ? 'Update Post' : 'Post Now'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {tab === 'blogList' && (
+        <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-brand-50 text-brand-dark text-left">
+              <tr>
+                <th className="px-4 py-3">Cover</th><th className="px-4 py-3">Title</th><th className="px-4 py-3">Author</th>
+                <th className="px-4 py-3">Publish Date</th><th className="px-4 py-3">Status</th><th className="px-4 py-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {blogPosts.map((p) => {
+                const effective = getEffectiveStatus(p);
+                return (
+                  <tr key={p.id} className="border-t border-gray-100">
+                    <td className="px-4 py-3">
+                      <img src={p.image} alt={p.title} className="w-14 h-10 object-cover rounded-md" />
+                    </td>
+                    <td className="px-4 py-3 font-medium text-brand-dark max-w-xs truncate">{p.title}</td>
+                    <td className="px-4 py-3 text-gray-500">{p.author}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">
+                      {new Date(p.publishAt).toLocaleString('en-IN', {
+                        day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit',
+                      })}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`tag ${effective === 'Published' ? 'bg-brand-dark' : 'bg-gold-dark'}`}>{effective}</span>
+                    </td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      {effective === 'Scheduled' && (
+                        <button onClick={() => handlePublishNow(p.id)} className="text-brand-dark underline text-xs mr-3">
+                          Publish Now
+                        </button>
+                      )}
+                      <button onClick={() => handleEditBlogPost(p)} className="text-brand-dark underline text-xs mr-3">
+                        Edit
+                      </button>
+                      <button onClick={() => handleDeleteBlogPost(p.id)} className="text-red-500 hover:text-red-600 inline-flex align-middle">
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {blogPosts.length === 0 && <p className="text-center text-gray-400 py-10 text-sm">No blog posts yet.</p>}
+          {scheduledBlogCount > 0 && (
+            <p className="text-xs text-gray-400 px-4 pb-4">{scheduledBlogCount} post(s) currently scheduled for a future date/time.</p>
+          )}
         </div>
       )}
 

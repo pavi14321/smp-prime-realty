@@ -20,7 +20,8 @@ const KNOWN_AREAS = [
   'Karnataka',
 ];
 
-const BUDGETS = [
+// Sale-style budgets (Apartments, Villas, Lands/Plots, Resale, New Launch, Plot, For Sale)
+const SALE_BUDGETS = [
   { label: 'All Budgets', min: '', max: '' },
   { label: 'Under ₹50 Lakh', min: '', max: '5000000' },
   { label: '₹50 Lakh - ₹1 Cr', min: '5000000', max: '10000000' },
@@ -28,13 +29,41 @@ const BUDGETS = [
   { label: 'Above ₹2 Cr', min: '20000000', max: '' },
 ];
 
+// Monthly rent budgets (Rental Properties, Commercial, For Rent)
+const RENT_BUDGETS = [
+  { label: 'All Budgets', min: '', max: '' },
+  { label: 'Under ₹20,000 / month', min: '', max: '20000' },
+  { label: '₹20,000 - ₹40,000 / month', min: '20000', max: '40000' },
+  { label: '₹40,000 - ₹75,000 / month', min: '40000', max: '75000' },
+  { label: 'Above ₹75,000 / month', min: '75000', max: '' },
+];
+
+// PG budgets (per bed / month — matches PG rentPerBed pricing)
+const PG_BUDGETS = [
+  { label: 'All Budgets', min: '', max: '' },
+  { label: 'Under ₹6,000 / bed / month', min: '', max: '6000' },
+  { label: '₹6,000 - ₹10,000 / bed / month', min: '6000', max: '10000' },
+  { label: '₹10,000 - ₹15,000 / bed / month', min: '10000', max: '15000' },
+  { label: 'Above ₹15,000 / bed / month', min: '15000', max: '' },
+];
+
+function resolveBudgetInfo(category, status) {
+  if (category === 'PG / Co-living' || status === 'PG') {
+    return { budgets: PG_BUDGETS, label: 'PG Budget' };
+  }
+  if (category === 'Commercial' || category === 'Rental Properties' || status === 'For Rent') {
+    return { budgets: RENT_BUDGETS, label: 'Rent Budget' };
+  }
+  return { budgets: SALE_BUDGETS, label: 'Budget' };
+}
+
 export default function Hero() {
   const navigate = useNavigate();
   const [location, setLocation] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [category, setCategory] = useState('');
-  const [budgetIdx, setBudgetIdx] = useState(0);
   const [status, setStatus] = useState('');
+  const [budgetIdx, setBudgetIdx] = useState(0);
   const wrapperRef = useRef(null);
 
   const propertyLocations = getAllProperties().map((p) => p.location).filter(Boolean);
@@ -44,6 +73,13 @@ export default function Hero() {
     location.trim().length > 0
       ? suggestionPool.filter((s) => s.toLowerCase().includes(location.trim().toLowerCase())).slice(0, 6)
       : [];
+
+  const { budgets, label: budgetLabel } = resolveBudgetInfo(category, status);
+
+  // Reset budget selection whenever the budget set itself changes (category/status switch)
+  useEffect(() => {
+    setBudgetIdx(0);
+  }, [category, status]);
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -55,12 +91,32 @@ export default function Hero() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleCategoryChange = (value) => {
+    setCategory(value);
+    // If PG selected as property type, auto-align status to PG for a consistent search
+    if (value === 'PG / Co-living') {
+      setStatus('PG');
+    } else if (status === 'PG') {
+      // Moving away from PG category while status is still PG — clear status so it's not stuck
+      setStatus('');
+    }
+  };
+
+  const handleStatusChange = (value) => {
+    setStatus(value);
+    if (value === 'PG') {
+      setCategory('PG / Co-living');
+    } else if (category === 'PG / Co-living') {
+      setCategory('');
+    }
+  };
+
   const handleSearch = () => {
     const params = new URLSearchParams();
     if (location.trim()) params.set('q', location.trim());
     if (category) params.set('category', category);
     if (status) params.set('status', status);
-    const budget = BUDGETS[budgetIdx];
+    const budget = budgets[budgetIdx];
     if (budget.min) params.set('minPrice', budget.min);
     if (budget.max) params.set('maxPrice', budget.max);
     navigate(`/properties${params.toString() ? `?${params.toString()}` : ''}`);
@@ -136,20 +192,21 @@ export default function Hero() {
             )}
           </div>
 
-          <SelectField icon={<LayoutGrid size={16} />} label="Property Type" value={category} onChange={setCategory}>
+          <SelectField icon={<LayoutGrid size={16} />} label="Property Type" value={category} onChange={handleCategoryChange}>
             <option value="">All Type</option>
             {CATEGORIES.map((c) => (
               <option key={c.name} value={c.name}>{c.name}</option>
             ))}
+            <option value="PG / Co-living">PG / Co-living</option>
           </SelectField>
 
-          <SelectField icon={<IndianRupee size={16} />} label="Budget" value={budgetIdx} onChange={(v) => setBudgetIdx(Number(v))}>
-            {BUDGETS.map((b, i) => (
+          <SelectField icon={<IndianRupee size={16} />} label={budgetLabel} value={budgetIdx} onChange={(v) => setBudgetIdx(Number(v))}>
+            {budgets.map((b, i) => (
               <option key={b.label} value={i}>{b.label}</option>
             ))}
           </SelectField>
 
-          <SelectField icon={<Compass size={16} />} label="Status" value={status} onChange={setStatus}>
+          <SelectField icon={<Compass size={16} />} label="Status" value={status} onChange={handleStatusChange}>
             <option value="">All Status</option>
             <option>For Sale</option>
             <option>For Rent</option>
