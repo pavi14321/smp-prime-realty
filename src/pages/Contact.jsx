@@ -1,9 +1,11 @@
 import { Phone, Mail, MapPin } from 'lucide-react';
+import BackButton from '../components/BackButton';
 
 export default function Contact() {
   return (
     <div className="container-x py-16 grid md:grid-cols-2 gap-10">
       <div>
+        <BackButton />
         <h1 className="font-display text-3xl font-bold text-brand-dark mb-4">Contact Us</h1>
         <p className="text-gray-600 mb-8">We are here to help you find your perfect place.</p>
         <div className="space-y-5 text-sm text-gray-600">

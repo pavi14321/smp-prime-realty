@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ShieldCheck, KeyRound } from 'lucide-react';
 import { useAdminAuth } from '../../context/AdminAuthContext';
+import BackButton from '../../components/BackButton';
 
 export default function AdminLogin() {
   const { step, submitCredentials, verifyLoginOtp, resendOtp, requestPasswordReset, confirmPasswordReset } = useAdminAuth();
@@ -16,6 +17,7 @@ export default function AdminLogin() {
   if (mode === 'forgot') {
     return (
       <div className="container-x py-20 max-w-sm mx-auto">
+        <BackButton />
         <div className="bg-white border border-gray-100 rounded-xl p-6">
           <h1 className="font-display text-xl font-bold text-brand-dark mb-4 flex items-center gap-2">
             <KeyRound size={18} /> Reset Admin Password
@@ -52,6 +54,7 @@ export default function AdminLogin() {
 
   return (
     <div className="container-x py-20 max-w-sm mx-auto">
+      <BackButton />
       <div className="bg-white border border-gray-100 rounded-xl p-6">
         <h1 className="font-display text-xl font-bold text-brand-dark mb-4 flex items-center gap-2">
           <ShieldCheck size={18} /> Admin Login
@@ -83,4 +86,4 @@ export default function AdminLogin() {
       </div>
     </div>
   );
-}   
+}

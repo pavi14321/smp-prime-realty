@@ -17,7 +17,6 @@ export function AdminAuthProvider({ children }) {
     return raw ? JSON.parse(raw) : null;
   });
 
-  // login wizard state
   const [step, setStep] = useState('credentials'); // credentials | otp
   const [pendingAdmin, setPendingAdmin] = useState(null);
 
@@ -65,7 +64,6 @@ export function AdminAuthProvider({ children }) {
     setStep('credentials');
   }
 
-  // forgot password mini-flow
   function requestPasswordReset(identifier) {
     const admin = findAdminByIdentifier(identifier);
     if (!admin) {

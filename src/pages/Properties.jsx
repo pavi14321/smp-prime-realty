@@ -3,14 +3,17 @@ import { useSearchParams } from 'react-router-dom';
 import { Search, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
 import { getAllProperties, subscribeDB, CATEGORIES } from '../data/db';
 import PropertyCard from '../components/PropertyCard';
+import BackButton from '../components/BackButton';
 
 export default function Properties() {
   const [params, setParams] = useSearchParams();
   const [properties, setProperties] = useState([]);
   const [query, setQuery] = useState(params.get('q') || '');
   const [category, setCategory] = useState(params.get('category') || '');
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState(params.get('status') || '');
   const [sort, setSort] = useState('newest');
+  const [minPrice] = useState(params.get('minPrice') ? Number(params.get('minPrice')) : null);
+  const [maxPrice] = useState(params.get('maxPrice') ? Number(params.get('maxPrice')) : null);
 
   useEffect(() => {
     const load = () => setProperties(getAllProperties());
@@ -25,7 +28,9 @@ export default function Properties() {
       p.location.toLowerCase().includes(query.toLowerCase());
     const matchesCategory = !category || p.category === category;
     const matchesStatus = !status || p.status === status;
-    return matchesQuery && matchesCategory && matchesStatus;
+    const matchesMin = !minPrice || p.price >= minPrice;
+    const matchesMax = !maxPrice || p.price <= maxPrice;
+    return matchesQuery && matchesCategory && matchesStatus && matchesMin && matchesMax;
   });
 
   if (sort === 'price-low') filtered = [...filtered].sort((a, b) => a.price - b.price);
@@ -34,10 +39,11 @@ export default function Properties() {
 
   return (
     <div className="container-x py-10">
+      <BackButton />
       <h1 className="font-display text-3xl font-bold text-brand-dark mb-6">Properties</h1>
 
-      <div className="flex items-center gap-3 mb-6">
-        <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-md px-3 py-2 flex-1">
+      <div className="flex items-center gap-3 mb-6 flex-wrap">
+        <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-md px-3 py-2 flex-1 min-w-[200px]">
           <Search size={16} className="text-gray-400" />
           <input
             value={query}

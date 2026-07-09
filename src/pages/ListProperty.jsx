@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Phone, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { addSubmission } from '../data/submissionsStore';
 import { sendOtp, verifyOtp } from '../utils/otpService';
+import BackButton from '../components/BackButton';
 import toast from 'react-hot-toast';
 
 const empty = {
@@ -59,6 +60,7 @@ export default function ListProperty() {
   if (submitted) {
     return (
       <div className="container-x py-16 max-w-xl mx-auto text-center">
+        <BackButton className="text-left" />
         <CheckCircle2 size={48} className="mx-auto text-green-600 mb-4" />
         <h1 className="font-display text-2xl font-bold text-brand-dark mb-2">
           Your property is under review
@@ -68,7 +70,10 @@ export default function ListProperty() {
           and call you on <strong>{submitted.phone}</strong> before your listing goes live on the
           website.
         </p>
-        <button className="btn-outline" onClick={() => { setSubmitted(null); setForm(empty); setOtpSent(false); setPhoneVerified(false); setOtp(''); }}>
+        <button
+          className="btn-outline"
+          onClick={() => { setSubmitted(null); setForm(empty); setOtpSent(false); setPhoneVerified(false); setOtp(''); }}
+        >
           Submit another property
         </button>
       </div>
@@ -77,6 +82,7 @@ export default function ListProperty() {
 
   return (
     <div className="container-x py-16 max-w-2xl mx-auto">
+      <BackButton />
       <h1 className="font-display text-3xl font-bold text-brand-dark mb-2">List Your Property</h1>
       <p className="text-gray-600 mb-8">
         Want to sell or rent your property? Share the details below — our team will review and

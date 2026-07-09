@@ -5,9 +5,9 @@ let admins = [
   {
     id: 'admin-1',
     name: 'Super Admin',
-    email: 'madvalp67@gmail.com',
-    phone: '6360469880',
-    password: 'Praveens@123',
+    email: 'admin@smpprimerealty.com',
+    phone: '9999999999',
+    password: 'Admin@123',
     role: 'superadmin', // superadmin | admin
   },
 ];
