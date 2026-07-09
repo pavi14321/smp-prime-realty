@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { Home as HomeIcon, Menu, X, ChevronDown, Building2 } from 'lucide-react';
+import { Home as HomeIcon, Menu, X, ChevronDown, Building2, ShieldCheck } from 'lucide-react';
 
 const links = [
   { label: 'Home', to: '/' },
@@ -86,6 +86,12 @@ export default function Navbar() {
           <Link to="/contact" className="btn-primary text-sm">
             Get In Touch
           </Link>
+          <Link
+            to="/admin"
+            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-brand-dark border border-gray-200 rounded-md px-3 py-2 transition-colors"
+          >
+            <ShieldCheck size={15} /> Admin Login
+          </Link>
         </div>
 
         <button className="lg:hidden text-brand-dark" onClick={() => setOpen(!open)}>
@@ -134,6 +140,14 @@ export default function Navbar() {
             className="btn-primary w-full text-center text-sm mt-2 inline-block"
           >
             Sell / Rent Your Property
+          </Link>
+
+          <Link
+            to="/admin"
+            onClick={() => setOpen(false)}
+            className="flex items-center justify-center gap-1.5 w-full text-center text-sm mt-2 border border-gray-200 rounded-md px-3 py-2 text-gray-600"
+          >
+            <ShieldCheck size={15} /> Admin Login
           </Link>
         </div>
       )}
