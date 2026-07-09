@@ -33,11 +33,11 @@ export default function Footer() {
         />
         <FooterCol
           title="Property Types"
-          items={['Apartments', 'Villas', 'Lands / Plots', 'Rental Properties', 'Resale Properties', 'Commercial']}
+          items={['Apartments', 'Villas', 'Lands / Plots', 'Rental Properties', 'Resale Properties', 'Commercial', 'PGs / Co-living']}
         />
         <FooterCol
           title="Services"
-          items={['Buy Property', 'Rent Property', 'Resale Property', 'Loan Support', 'Legal Support']}
+          items={['Buy Property', 'Rent Property', 'Resale Property', 'List Your PG', 'Loan Support', 'Legal Support']}
         />
       </div>
 

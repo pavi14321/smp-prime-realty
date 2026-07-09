@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { getAllProperties, subscribeDB, CATEGORIES } from '../data/db';
 import PropertyCard from '../components/PropertyCard';
 import BackButton from '../components/BackButton';
 
 export default function Properties() {
-  const [params, setParams] = useSearchParams();
+  const [params] = useSearchParams();
   const [properties, setProperties] = useState([]);
   const [query, setQuery] = useState(params.get('q') || '');
   const [category, setCategory] = useState(params.get('category') || '');
@@ -62,6 +62,7 @@ export default function Properties() {
           <option>For Rent</option>
           <option>New Launch</option>
           <option>Plot</option>
+          <option>PG</option>
         </select>
         <select
           value={category}

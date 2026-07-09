@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { Home as HomeIcon, Menu, X, ChevronDown, Building2, ShieldCheck } from 'lucide-react';
+import { Home as HomeIcon, Menu, X, ChevronDown, Building2, ShieldCheck, Search, KeyRound } from 'lucide-react';
 
 const links = [
   { label: 'Home', to: '/' },
@@ -11,7 +11,10 @@ const links = [
 ];
 
 const serviceLinks = [
-  { label: 'List / Sell / Rent Your Property', to: '/list-property' },
+  { label: 'Sell Your Property', to: '/list-property?type=sell', icon: Building2, hint: 'For Sellers' },
+  { label: 'Rent Out Your Property', to: '/list-property?type=rent', icon: KeyRound, hint: 'For Owners' },
+  { label: 'List Your PG', to: '/list-property?type=pg', icon: Building2, hint: 'For PG Owners' },
+  { label: 'Browse Properties & PGs', to: '/properties', icon: Search, hint: 'For Buyers & Tenants' },
 ];
 
 export default function Navbar() {
@@ -27,9 +30,7 @@ export default function Navbar() {
             <HomeIcon size={20} />
           </span>
           <span>
-            <span className="block font-display font-bold text-lg text-brand-dark leading-tight">
-              SMP Prime Realty
-            </span>
+            <span className="block font-display font-bold text-lg text-brand-dark leading-tight">SMP Prime Realty</span>
             <span className="block text-[11px] text-gray-500">Find Your Perfect Place</span>
           </span>
         </Link>
@@ -39,19 +40,13 @@ export default function Navbar() {
             <NavLink
               key={l.to}
               to={l.to}
-              className={({ isActive }) =>
-                `hover:text-brand-dark transition-colors ${isActive ? 'text-brand-dark' : ''}`
-              }
+              className={({ isActive }) => `hover:text-brand-dark transition-colors ${isActive ? 'text-brand-dark' : ''}`}
             >
               {l.label}
             </NavLink>
           ))}
 
-          <div
-            className="relative"
-            onMouseEnter={() => setServicesOpen(true)}
-            onMouseLeave={() => setServicesOpen(false)}
-          >
+          <div className="relative" onMouseEnter={() => setServicesOpen(true)} onMouseLeave={() => setServicesOpen(false)}>
             <button
               type="button"
               onClick={() => setServicesOpen((v) => !v)}
@@ -61,18 +56,25 @@ export default function Navbar() {
             </button>
 
             {servicesOpen && (
-              <div className="absolute top-full left-0 pt-3 w-64">
+              <div className="absolute top-full left-0 pt-3 w-72">
                 <div className="bg-white border border-gray-100 rounded-lg shadow-lg py-2">
-                  {serviceLinks.map((s) => (
-                    <Link
-                      key={s.to}
-                      to={s.to}
-                      onClick={() => setServicesOpen(false)}
-                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-brand-50 hover:text-brand-dark"
-                    >
-                      <Building2 size={14} /> {s.label}
-                    </Link>
-                  ))}
+                  {serviceLinks.map((s) => {
+                    const Icon = s.icon;
+                    return (
+                      <Link
+                        key={s.label}
+                        to={s.to}
+                        onClick={() => setServicesOpen(false)}
+                        className="flex items-start gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-brand-50 hover:text-brand-dark"
+                      >
+                        <Icon size={15} className="mt-0.5 shrink-0" />
+                        <span>
+                          <span className="block">{s.label}</span>
+                          <span className="block text-[11px] text-gray-400">{s.hint}</span>
+                        </span>
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -80,12 +82,8 @@ export default function Navbar() {
         </nav>
 
         <div className="hidden lg:flex items-center gap-3">
-          <Link to="/list-property" className="btn-outline text-sm">
-            Sell / Rent Property
-          </Link>
-          <Link to="/contact" className="btn-primary text-sm">
-            Get In Touch
-          </Link>
+          <Link to="/list-property" className="btn-outline text-sm">List Property / PG</Link>
+          <Link to="/contact" className="btn-primary text-sm">Get In Touch</Link>
           <Link
             to="/admin"
             className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-brand-dark border border-gray-200 rounded-md px-3 py-2 transition-colors"
@@ -102,12 +100,7 @@ export default function Navbar() {
       {open && (
         <div className="lg:hidden border-t border-gray-100 px-4 pb-4">
           {links.map((l) => (
-            <Link
-              key={l.to}
-              to={l.to}
-              onClick={() => setOpen(false)}
-              className="block py-2 text-sm font-medium text-gray-700"
-            >
+            <Link key={l.to} to={l.to} onClick={() => setOpen(false)} className="block py-2 text-sm font-medium text-gray-700">
               {l.label}
             </Link>
           ))}
@@ -123,25 +116,20 @@ export default function Navbar() {
             <div className="pl-3 border-l-2 border-gray-100 mb-2">
               {serviceLinks.map((s) => (
                 <Link
-                  key={s.to}
+                  key={s.label}
                   to={s.to}
                   onClick={() => { setOpen(false); setMobileServicesOpen(false); }}
                   className="block py-2 text-sm text-gray-600"
                 >
-                  {s.label}
+                  {s.label} <span className="text-[11px] text-gray-400">— {s.hint}</span>
                 </Link>
               ))}
             </div>
           )}
 
-          <Link
-            to="/list-property"
-            onClick={() => setOpen(false)}
-            className="btn-primary w-full text-center text-sm mt-2 inline-block"
-          >
-            Sell / Rent Your Property
+          <Link to="/list-property" onClick={() => setOpen(false)} className="btn-primary w-full text-center text-sm mt-2 inline-block">
+            List Property / PG
           </Link>
-
           <Link
             to="/admin"
             onClick={() => setOpen(false)}

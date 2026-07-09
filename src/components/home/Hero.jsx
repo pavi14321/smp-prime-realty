@@ -78,7 +78,7 @@ export default function Hero() {
             <br /> Property With Us
           </h1>
           <p className="text-gray-600 max-w-md mb-8">
-            We offer the best real estate deals in residential, commercial, rental, resale, villas, apartments and lands.
+            We offer the best real estate deals in residential, commercial, rental, resale, villas, apartments, lands and PGs.
           </p>
           <div className="flex items-center gap-4">
             <button onClick={() => navigate('/properties')} className="btn-primary">
@@ -155,6 +155,7 @@ export default function Hero() {
             <option>For Rent</option>
             <option>New Launch</option>
             <option>Plot</option>
+            <option>PG</option>
           </SelectField>
 
           <button onClick={handleSearch} className="btn-primary flex items-center justify-center gap-2 h-full">

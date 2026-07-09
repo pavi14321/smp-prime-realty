@@ -1,16 +1,26 @@
 import { useEffect, useState } from 'react';
-import { PlusCircle, Trash2, Star, LayoutList, CheckCircle2, ClipboardList, Users, History, LogOut, ShieldAlert } from 'lucide-react';
+import {
+  PlusCircle, Trash2, Star, LayoutList, CheckCircle2, ClipboardList, Users, History,
+  LogOut, ShieldAlert,
+} from 'lucide-react';
 import { getAllProperties, addProperty, deleteProperty, updateProperty, subscribeDB, CATEGORIES } from '../data/db';
 import { getSubmissions, updateSubmissionStatus, subscribeSubmissions } from '../data/submissionsStore';
 import { getAdmins, addAdmin, removeAdmin, getActivityLog, subscribeAdmins } from '../data/adminStore';
 import { useAdminAuth } from '../context/AdminAuthContext';
+import ImageUploader from '../components/ImageUploader';
 import toast from 'react-hot-toast';
 
 const emptyForm = {
   title: '', location: '', price: '', priceLabel: '', status: 'For Sale', category: 'Apartments',
   beds: '', baths: '', sqft: '', dimensions: '', parking: '', facing: 'North Facing',
   negotiable: false, readyToMove: true, featured: true, description: '', amenitiesText: '',
-  imagesText: '', lat: '12.9716', lng: '77.5946',
+  images: [], lat: '12.9716', lng: '77.5946',
+  genderPreference: 'Co-living',
+  washingMachine: false,
+  hotWater: false,
+  washroomType: 'Attached',
+  powerBackup: false,
+  sharingOptions: [{ id: 1, sharingType: '2 Sharing', rooms: '', rent: '' }],
 };
 
 export default function Admin() {
@@ -25,25 +35,14 @@ export default function Admin() {
   const [form, setForm] = useState(emptyForm);
   const [lastAdded, setLastAdded] = useState(null);
   const [convertingId, setConvertingId] = useState(null);
-
   const [adminForm, setAdminForm] = useState({ name: '', email: '', phone: '', password: '', role: 'admin' });
 
+  useEffect(() => { const l = () => setProperties(getAllProperties()); l(); return subscribeDB(l); }, []);
+  useEffect(() => { const l = () => setSubmissions(getSubmissions()); l(); return subscribeSubmissions(l); }, []);
   useEffect(() => {
-    const load = () => setProperties(getAllProperties());
-    load();
-    return subscribeDB(load);
-  }, []);
-
-  useEffect(() => {
-    const load = () => setSubmissions(getSubmissions());
-    load();
-    return subscribeSubmissions(load);
-  }, []);
-
-  useEffect(() => {
-    const load = () => { setAdmins(getAdmins()); setActivityLog(getActivityLog()); };
-    load();
-    return subscribeAdmins(load);
+    const l = () => { setAdmins(getAdmins()); setActivityLog(getActivityLog()); };
+    l();
+    return subscribeAdmins(l);
   }, []);
 
   const set = (key) => (e) => {
@@ -51,20 +50,52 @@ export default function Admin() {
     setForm((f) => ({ ...f, [key]: val }));
   };
 
+  const isPG = form.status === 'PG';
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    const price = parseFloat(form.price) || 0;
-    const priceLabel = form.priceLabel || (form.status === 'For Rent' ? `₹${price.toLocaleString('en-IN')} / Month` : `₹${price.toLocaleString('en-IN')}`);
-    const images = form.imagesText.split('\n').map((s) => s.trim()).filter(Boolean);
+    if (form.images.length === 0) {
+      toast.error('Please upload at least 1 photo');
+      return;
+    }
+
+    let price, priceLabel, pg = null;
     const amenities = form.amenitiesText.split('\n').map((s) => s.trim()).filter(Boolean);
+
+    if (isPG) {
+      const validRows = form.sharingOptions.filter((r) => r.rooms && r.rent);
+      if (validRows.length === 0) {
+        toast.error('Please add at least one sharing type with rooms and rent');
+        return;
+      }
+      const rents = validRows.map((r) => Number(r.rent));
+      const min = Math.min(...rents);
+      const max = Math.max(...rents);
+      price = min;
+      priceLabel = form.priceLabel || (min === max ? `₹${min.toLocaleString('en-IN')} / Month` : `₹${min.toLocaleString('en-IN')} - ₹${max.toLocaleString('en-IN')} / Month`);
+      pg = {
+        genderPreference: form.genderPreference,
+        washingMachine: form.washingMachine,
+        hotWater: form.hotWater,
+        washroomType: form.washroomType,
+        powerBackup: form.powerBackup,
+        parking: !!form.parking,
+        sharingOptions: validRows,
+      };
+    } else {
+      price = parseFloat(form.price) || 0;
+      priceLabel = form.priceLabel || (form.status === 'For Rent' ? `₹${price.toLocaleString('en-IN')} / Month` : `₹${price.toLocaleString('en-IN')}`);
+    }
 
     const newProperty = addProperty({
       title: form.title, location: form.location, price, priceLabel, status: form.status,
-      category: form.category, beds: parseInt(form.beds) || 0, baths: parseInt(form.baths) || 0,
+      category: isPG ? 'PG / Co-living' : form.category,
+      beds: isPG ? 0 : parseInt(form.beds) || 0,
+      baths: isPG ? 0 : parseInt(form.baths) || 0,
       sqft: parseInt(form.sqft) || 0, dimensions: form.dimensions, parking: form.parking,
       facing: form.facing, negotiable: form.negotiable, readyToMove: form.readyToMove,
-      featured: form.featured, description: form.description, amenities, images,
-      lat: form.lat, lng: form.lng,
+      featured: form.featured, description: form.description, amenities, images: form.images,
+      lat: form.lat, lng: form.lng, pg,
     });
 
     if (convertingId) {
@@ -82,11 +113,21 @@ export default function Admin() {
       ...emptyForm,
       title: s.propertyName,
       location: s.location,
-      price: s.expectedAmount,
-      status: s.listingType === 'Rent' ? 'For Rent' : 'For Sale',
-      sqft: s.sqft,
+      status: s.listingType === 'PG' ? 'PG' : s.listingType === 'Rent' ? 'For Rent' : 'For Sale',
+      price: s.expectedAmount || '',
+      sqft: s.sqft || '',
       readyToMove: s.constructionStatus === 'Ready to Move',
-      description: `Condition: ${s.condition}. Submitted by owner ${s.ownerName} (${s.phone} / ${s.email}). Please review and complete remaining details before publishing.`,
+      images: s.images || [],
+      genderPreference: s.genderPreference || 'Co-living',
+      washingMachine: s.washingMachine || false,
+      hotWater: s.hotWater || false,
+      washroomType: s.washroomType || 'Attached',
+      powerBackup: s.powerBackup || false,
+      sharingOptions: s.sharingOptions?.length ? s.sharingOptions : emptyForm.sharingOptions,
+      description:
+        s.listingType === 'PG'
+          ? `Submitted by owner ${s.ownerName} (${s.phone} / ${s.email}). Please review before publishing.`
+          : `Condition: ${s.condition}. Submitted by owner ${s.ownerName} (${s.phone} / ${s.email}). Please review and complete remaining details before publishing.`,
     });
     setConvertingId(s.id);
     setTab('add');
@@ -121,7 +162,7 @@ export default function Admin() {
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div>
           <h1 className="font-display text-3xl font-bold text-brand-dark">Admin Panel</h1>
-          <p className="text-sm text-gray-500">Add and manage property listings shown on the website.</p>
+          <p className="text-sm text-gray-500">Add and manage property & PG listings shown on the website.</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="text-right">
@@ -135,9 +176,9 @@ export default function Admin() {
       </div>
 
       <div className="flex gap-2 bg-white border border-gray-200 rounded-lg p-1 mb-8 flex-wrap">
-        <TabButton active={tab === 'add'} onClick={() => setTab('add')} icon={<PlusCircle size={15} />} label="Add Property" />
+        <TabButton active={tab === 'add'} onClick={() => setTab('add')} icon={<PlusCircle size={15} />} label="Add Property / PG" />
         <TabButton active={tab === 'list'} onClick={() => setTab('list')} icon={<LayoutList size={15} />} label={`Manage (${properties.length})`} />
-        <TabButton active={tab === 'submissions'} onClick={() => setTab('submissions')} icon={<ClipboardList size={15} />} label={`Property Requests (${pendingCount})`} />
+        <TabButton active={tab === 'submissions'} onClick={() => setTab('submissions')} icon={<ClipboardList size={15} />} label={`Requests (${pendingCount})`} />
         {isSuperAdmin && (
           <>
             <TabButton active={tab === 'admins'} onClick={() => setTab('admins')} icon={<Users size={15} />} label="Manage Admins" />
@@ -148,7 +189,7 @@ export default function Admin() {
 
       {lastAdded && tab === 'list' && (
         <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3 mb-6">
-          <CheckCircle2 size={16} /> Property added successfully with ID <strong>{lastAdded.id}</strong>. It now appears on the website.
+          <CheckCircle2 size={16} /> Listing added successfully with ID <strong>{lastAdded.id}</strong>. It now appears on the website.
         </div>
       )}
 
@@ -156,79 +197,133 @@ export default function Admin() {
         <form onSubmit={handleSubmit} className="bg-white border border-gray-100 rounded-xl p-6 grid md:grid-cols-2 gap-5">
           {convertingId && (
             <div className="md:col-span-2 flex items-center gap-2 bg-brand-50 text-brand-dark text-sm rounded-lg px-4 py-3">
-              <ShieldAlert size={16} /> Publishing from property request <strong>{convertingId}</strong> — please complete the remaining fields (category, beds/baths, photos) below.
+              <ShieldAlert size={16} /> Publishing from request <strong>{convertingId}</strong> — please complete the remaining fields below.
             </div>
           )}
-          <Field label="Property Title" required>
-            <input required value={form.title} onChange={set('title')} className="input" placeholder="e.g. Luxury 4BHK Villa" />
+
+          <Field label="Title" required>
+            <input required value={form.title} onChange={set('title')} className="input" placeholder="e.g. Luxury 4BHK Villa / Green Nest PG" />
           </Field>
           <Field label="Location" required>
             <input required value={form.location} onChange={set('location')} className="input" placeholder="e.g. Sarjapur Road, Bengaluru" />
           </Field>
-          <Field label="Category" required>
-            <select value={form.category} onChange={set('category')} className="input">
-              {CATEGORIES.map((c) => <option key={c.name}>{c.name}</option>)}
-            </select>
-          </Field>
+
           <Field label="Status" required>
             <select value={form.status} onChange={set('status')} className="input">
-              <option>For Sale</option><option>For Rent</option><option>New Launch</option><option>Plot</option>
+              <option>For Sale</option><option>For Rent</option><option>New Launch</option><option>Plot</option><option>PG</option>
             </select>
           </Field>
-          <Field label="Price (₹)" required>
-            <input required type="number" value={form.price} onChange={set('price')} className="input" placeholder="8500000" />
+
+          {!isPG && (
+            <Field label="Category" required>
+              <select value={form.category} onChange={set('category')} className="input">
+                {CATEGORIES.map((c) => <option key={c.name}>{c.name}</option>)}
+              </select>
+            </Field>
+          )}
+
+          {!isPG && (
+            <>
+              <Field label="Price (₹)" required>
+                <input required type="number" value={form.price} onChange={set('price')} className="input" placeholder="8500000" />
+              </Field>
+              <Field label="Custom Price Label (optional)">
+                <input value={form.priceLabel} onChange={set('priceLabel')} className="input" placeholder="Auto-generated if left blank" />
+              </Field>
+              <Field label="Beds">
+                <input type="number" value={form.beds} onChange={set('beds')} className="input" placeholder="0 for plots" />
+              </Field>
+              <Field label="Baths">
+                <input type="number" value={form.baths} onChange={set('baths')} className="input" placeholder="0 for plots" />
+              </Field>
+            </>
+          )}
+
+          <Field label="Area (Sq.Ft)" required={!isPG}>
+            <input required={!isPG} type="number" value={form.sqft} onChange={set('sqft')} className="input" placeholder="1650" />
           </Field>
-          <Field label="Custom Price Label (optional)">
-            <input value={form.priceLabel} onChange={set('priceLabel')} className="input" placeholder="Auto-generated if left blank" />
-          </Field>
-          <Field label="Beds">
-            <input type="number" value={form.beds} onChange={set('beds')} className="input" placeholder="0 for plots" />
-          </Field>
-          <Field label="Baths">
-            <input type="number" value={form.baths} onChange={set('baths')} className="input" placeholder="0 for plots" />
-          </Field>
-          <Field label="Area (Sq.Ft)" required>
-            <input required type="number" value={form.sqft} onChange={set('sqft')} className="input" placeholder="1650" />
-          </Field>
-          <Field label="Plot Dimensions (optional)">
-            <input value={form.dimensions} onChange={set('dimensions')} className="input" placeholder="e.g. 30x40" />
-          </Field>
-          <Field label="Parking">
-            <input value={form.parking} onChange={set('parking')} className="input" placeholder="e.g. 2 Car Parking" />
-          </Field>
-          <Field label="Facing">
-            <select value={form.facing} onChange={set('facing')} className="input">
-              <option>North Facing</option><option>South Facing</option><option>East Facing</option><option>West Facing</option>
-            </select>
-          </Field>
+
+          {!isPG && (
+            <>
+              <Field label="Plot Dimensions (optional)">
+                <input value={form.dimensions} onChange={set('dimensions')} className="input" placeholder="e.g. 30x40" />
+              </Field>
+              <Field label="Facing">
+                <select value={form.facing} onChange={set('facing')} className="input">
+                  <option>North Facing</option><option>South Facing</option><option>East Facing</option><option>West Facing</option>
+                </select>
+              </Field>
+            </>
+          )}
+
+          {isPG && (
+            <>
+              <Field label="Gender Preference" required>
+                <select value={form.genderPreference} onChange={set('genderPreference')} className="input">
+                  <option>Co-living</option>
+                  <option>Men Only</option>
+                  <option>Women Only</option>
+                </select>
+              </Field>
+              <Field label="Washroom Type" required>
+                <select value={form.washroomType} onChange={set('washroomType')} className="input">
+                  <option>Attached</option>
+                  <option>Common</option>
+                </select>
+              </Field>
+              <div className="md:col-span-2 flex items-center gap-6 flex-wrap">
+                <label className="flex items-center gap-2 text-sm text-gray-600">
+                  <input type="checkbox" checked={form.washingMachine} onChange={set('washingMachine')} /> Washing Machine
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-600">
+                  <input type="checkbox" checked={form.hotWater} onChange={set('hotWater')} /> Hot Water
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-600">
+                  <input type="checkbox" checked={form.powerBackup} onChange={set('powerBackup')} /> Power Backup
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-600">
+                  <input type="checkbox" checked={form.parking} onChange={set('parking')} /> Parking
+                </label>
+              </div>
+              <Field label="Sharing Type & Rent" full required>
+                <SharingRows rows={form.sharingOptions} onChange={(rows) => setForm((f) => ({ ...f, sharingOptions: rows }))} />
+              </Field>
+            </>
+          )}
+
           <Field label="Latitude (Bengaluru default)">
             <input value={form.lat} onChange={set('lat')} className="input" />
           </Field>
           <Field label="Longitude (Bengaluru default)">
             <input value={form.lng} onChange={set('lng')} className="input" />
           </Field>
-          <div className="md:col-span-2 flex items-center gap-6">
-            <label className="flex items-center gap-2 text-sm text-gray-600">
-              <input type="checkbox" checked={form.negotiable} onChange={set('negotiable')} /> Price Negotiable
-            </label>
-            <label className="flex items-center gap-2 text-sm text-gray-600">
-              <input type="checkbox" checked={form.readyToMove} onChange={set('readyToMove')} /> Ready To Move
-            </label>
-            <label className="flex items-center gap-2 text-sm text-gray-600">
-              <input type="checkbox" checked={form.featured} onChange={set('featured')} /> Show in Featured
-            </label>
-          </div>
+
+          {!isPG && (
+            <div className="md:col-span-2 flex items-center gap-6">
+              <label className="flex items-center gap-2 text-sm text-gray-600">
+                <input type="checkbox" checked={form.negotiable} onChange={set('negotiable')} /> Price Negotiable
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-600">
+                <input type="checkbox" checked={form.readyToMove} onChange={set('readyToMove')} /> Ready To Move
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-600">
+                <input type="checkbox" checked={form.featured} onChange={set('featured')} /> Show in Featured
+              </label>
+            </div>
+          )}
+
           <Field label="Description" full>
-            <textarea value={form.description} onChange={set('description')} rows={4} className="input" placeholder="Describe the property..." />
+            <textarea value={form.description} onChange={set('description')} rows={4} className="input" placeholder="Describe the listing..." />
           </Field>
           <Field label="Amenities (one per line)" full>
             <textarea value={form.amenitiesText} onChange={set('amenitiesText')} rows={3} className="input" placeholder={'Gated Community\n24/7 Security\nSwimming Pool'} />
           </Field>
-          <Field label="Image URLs (one per line, optional — placeholder used if empty)" full>
-            <textarea value={form.imagesText} onChange={set('imagesText')} rows={3} className="input" placeholder={'https://example.com/image1.jpg\nhttps://example.com/image2.jpg'} />
+          <Field label="Photos" full required>
+            <ImageUploader images={form.images} onChange={(imgs) => setForm((f) => ({ ...f, images: imgs }))} max={6} label="Photos" />
           </Field>
+
           <div className="md:col-span-2">
-            <button type="submit" className="btn-primary">{convertingId ? 'Publish Listing' : 'Add Property'}</button>
+            <button type="submit" className="btn-primary">{convertingId ? 'Publish Listing' : 'Add Listing'}</button>
           </div>
         </form>
       )}
@@ -264,7 +359,7 @@ export default function Admin() {
               ))}
             </tbody>
           </table>
-          {properties.length === 0 && <p className="text-center text-gray-400 py-10 text-sm">No properties yet.</p>}
+          {properties.length === 0 && <p className="text-center text-gray-400 py-10 text-sm">No listings yet.</p>}
         </div>
       )}
 
@@ -274,8 +369,7 @@ export default function Admin() {
             <thead className="bg-brand-50 text-brand-dark text-left">
               <tr>
                 <th className="px-4 py-3">Ref ID</th><th className="px-4 py-3">Owner</th><th className="px-4 py-3">Contact</th>
-                <th className="px-4 py-3">Property</th><th className="px-4 py-3">Sqft</th><th className="px-4 py-3">Condition</th>
-                <th className="px-4 py-3">Type</th><th className="px-4 py-3">Expected ₹</th><th className="px-4 py-3">Status</th><th className="px-4 py-3"></th>
+                <th className="px-4 py-3">Title</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Status</th><th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
@@ -285,10 +379,7 @@ export default function Admin() {
                   <td className="px-4 py-3 font-medium text-brand-dark">{s.ownerName}</td>
                   <td className="px-4 py-3 text-gray-500 text-xs">{s.phone}<br />{s.email}</td>
                   <td className="px-4 py-3">{s.propertyName}<br /><span className="text-xs text-gray-400">{s.location}</span></td>
-                  <td className="px-4 py-3">{s.sqft}</td>
-                  <td className="px-4 py-3">{s.condition}<br /><span className="text-xs text-gray-400">{s.constructionStatus}</span></td>
                   <td className="px-4 py-3">{s.listingType}</td>
-                  <td className="px-4 py-3">₹{Number(s.expectedAmount).toLocaleString('en-IN')}</td>
                   <td className="px-4 py-3">
                     <span className={`tag ${s.status === 'Pending' ? 'bg-gold-dark' : s.status === 'Converted' ? 'bg-brand-dark' : 'bg-sale'}`}>{s.status}</span>
                   </td>
@@ -304,7 +395,7 @@ export default function Admin() {
               ))}
             </tbody>
           </table>
-          {submissions.length === 0 && <p className="text-center text-gray-400 py-10 text-sm">No property requests yet.</p>}
+          {submissions.length === 0 && <p className="text-center text-gray-400 py-10 text-sm">No requests yet.</p>}
         </div>
       )}
 
@@ -367,6 +458,37 @@ export default function Admin() {
           {activityLog.length === 0 && <p className="text-center text-gray-400 py-10 text-sm">No activity yet.</p>}
         </div>
       )}
+    </div>
+  );
+}
+
+function SharingRows({ rows, onChange }) {
+  const update = (id, key, value) => onChange(rows.map((r) => (r.id === id ? { ...r, [key]: value } : r)));
+  const addRow = () => onChange([...rows, { id: Date.now(), sharingType: '2 Sharing', rooms: '', rent: '' }]);
+  const removeRow = (id) => onChange(rows.filter((r) => r.id !== id));
+
+  return (
+    <div className="space-y-3">
+      {rows.map((r) => (
+        <div key={r.id} className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-center bg-gray-50 rounded-lg p-3">
+          <select value={r.sharingType} onChange={(e) => update(r.id, 'sharingType', e.target.value)} className="input">
+            <option>1 Sharing</option>
+            <option>2 Sharing</option>
+            <option>3 Sharing</option>
+            <option>4 Sharing</option>
+          </select>
+          <input type="number" value={r.rooms} onChange={(e) => update(r.id, 'rooms', e.target.value)} className="input" placeholder="No. of rooms" />
+          <input type="number" value={r.rent} onChange={(e) => update(r.id, 'rent', e.target.value)} className="input" placeholder="Rent ₹ / month" />
+          {rows.length > 1 && (
+            <button type="button" onClick={() => removeRow(r.id)} className="text-red-500 text-xs underline justify-self-start">
+              Remove
+            </button>
+          )}
+        </div>
+      ))}
+      <button type="button" onClick={addRow} className="text-brand-dark text-sm underline">
+        + Add another sharing type
+      </button>
     </div>
   );
 }

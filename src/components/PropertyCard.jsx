@@ -1,26 +1,16 @@
 import { Link } from 'react-router-dom';
-import { MapPin, BedDouble, Bath, Ruler, Heart } from 'lucide-react';
+import { MapPin, BedDouble, Bath, Ruler, Heart, Users, Home } from 'lucide-react';
 
 const tagColor = {
   'For Sale': 'bg-sale',
   'For Rent': 'bg-rent',
   'New Launch': 'bg-gold-dark',
   Plot: 'bg-plotTag',
+  PG: 'bg-gold-dark',
 };
 
 export default function PropertyCard({ property, showHeart }) {
-  const {
-    id,
-    title,
-    location,
-    priceLabel,
-    status,
-    images,
-    beds,
-    baths,
-    sqft,
-    dimensions,
-  } = property;
+  const { id, title, location, priceLabel, status, images, beds, baths, sqft, dimensions, pg } = property;
 
   return (
     <Link
@@ -46,21 +36,29 @@ export default function PropertyCard({ property, showHeart }) {
           <MapPin size={12} /> {location}
         </p>
         <p className="text-gold-dark font-bold text-base mb-3">{priceLabel}</p>
-        <div className="flex items-center gap-4 text-xs text-gray-600 border-t border-gray-100 pt-3">
-          {beds > 0 && (
+
+        {status === 'PG' && pg ? (
+          <div className="flex items-center gap-4 text-xs text-gray-600 border-t border-gray-100 pt-3">
+            <span className="flex items-center gap-1"><Users size={13} /> {pg.genderPreference}</span>
+            <span className="flex items-center gap-1"><Home size={13} /> {pg.sharingOptions?.[0]?.sharingType || 'Multiple options'}</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-4 text-xs text-gray-600 border-t border-gray-100 pt-3">
+            {beds > 0 && (
+              <span className="flex items-center gap-1">
+                <BedDouble size={13} /> {beds} Beds
+              </span>
+            )}
+            {baths > 0 && (
+              <span className="flex items-center gap-1">
+                <Bath size={13} /> {baths} Baths
+              </span>
+            )}
             <span className="flex items-center gap-1">
-              <BedDouble size={13} /> {beds} Beds
+              <Ruler size={13} /> {sqft} Sq.Ft {dimensions ? `(${dimensions})` : ''}
             </span>
-          )}
-          {baths > 0 && (
-            <span className="flex items-center gap-1">
-              <Bath size={13} /> {baths} Baths
-            </span>
-          )}
-          <span className="flex items-center gap-1">
-            <Ruler size={13} /> {sqft} Sq.Ft {dimensions ? `(${dimensions})` : ''}
-          </span>
-        </div>
+          </div>
+        )}
       </div>
     </Link>
   );

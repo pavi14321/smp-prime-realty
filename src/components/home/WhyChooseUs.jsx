@@ -3,7 +3,7 @@ import { Users, Award, Building2, FileCheck } from 'lucide-react';
 const items = [
   { icon: Users, title: 'Trusted By Thousands', desc: '1000+ happy customers and counting.' },
   { icon: Award, title: 'Best Price Guarantee', desc: 'We ensure transparent deals with best prices.' },
-  { icon: Building2, title: 'Wide Range Of Options', desc: 'From apartments to lands, we have it all.' },
+  { icon: Building2, title: 'Wide Range Of Options', desc: 'From apartments to lands to PGs, we have it all.' },
   { icon: FileCheck, title: 'Legal & Loan Support', desc: 'End to end support for legal verification and loans.' },
 ];
 

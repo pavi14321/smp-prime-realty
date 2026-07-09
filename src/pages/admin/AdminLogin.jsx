@@ -9,8 +9,8 @@ export default function AdminLogin() {
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
 
-  const [mode, setMode] = useState('login'); // login | forgot
-  const [forgotStep, setForgotStep] = useState('request'); // request | reset
+  const [mode, setMode] = useState('login');
+  const [forgotStep, setForgotStep] = useState('request');
   const [forgotOtp, setForgotOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
 
